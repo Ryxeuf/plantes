@@ -14,7 +14,8 @@ services:
       APP_DEBUG: "${APP_DEBUG}"
       APP_OVERDUE_TASK_HOURS: "${APP_OVERDUE_TASK_HOURS}"
       APP_CRON_PW: "${APP_CRON_PW}"
-      DB_HOST: db
+      # "db" est ambigu : nufflearena_db porte cet alias sur traefik-network partagé
+      DB_HOST: plantes-db
       DB_PORT: 3306
       DB_DATABASE: "${DB_DATABASE}"
       DB_USERNAME: "${DB_USERNAME}"
@@ -44,15 +45,16 @@ services:
     labels:
       traefik.enable: "true"
       traefik.docker.network: "${TRAEFIK_NETWORK}"
-      traefik.http.routers.${STACK_NAME}.rule: "Host(`${DOMAIN}`)"
-      traefik.http.routers.${STACK_NAME}.entrypoints: "${TRAEFIK_ENTRYPOINT}"
-      traefik.http.routers.${STACK_NAME}.tls: "true"
-      traefik.http.routers.${STACK_NAME}.tls.certresolver: "${TRAEFIK_CERTRESOLVER}"
-      traefik.http.routers.${STACK_NAME}.middlewares: "${STACK_NAME}-headers"
-      traefik.http.services.${STACK_NAME}.loadbalancer.server.port: "80"
-      traefik.http.middlewares.${STACK_NAME}-headers.headers.stsSeconds: "31536000"
-      traefik.http.middlewares.${STACK_NAME}-headers.headers.contentTypeNosniff: "true"
-      traefik.http.middlewares.${STACK_NAME}-headers.headers.referrerPolicy: "same-origin"
+      # NB: Compose n'interpole pas les variables dans les clés YAML — noms en dur
+      traefik.http.routers.plantes.rule: "Host(`${DOMAIN}`)"
+      traefik.http.routers.plantes.entrypoints: "${TRAEFIK_ENTRYPOINT}"
+      traefik.http.routers.plantes.tls: "true"
+      traefik.http.routers.plantes.tls.certresolver: "${TRAEFIK_CERTRESOLVER}"
+      traefik.http.routers.plantes.middlewares: "plantes-headers"
+      traefik.http.services.plantes.loadbalancer.server.port: "80"
+      traefik.http.middlewares.plantes-headers.headers.stsSeconds: "31536000"
+      traefik.http.middlewares.plantes-headers.headers.contentTypeNosniff: "true"
+      traefik.http.middlewares.plantes-headers.headers.referrerPolicy: "same-origin"
 
   db:
     image: mariadb:11.4
@@ -77,6 +79,10 @@ services:
 networks:
   internal:
     internal: true
+    # Pools d'adresses par défaut épuisés sur cet hôte (34 réseaux) — subnet explicite
+    ipam:
+      config:
+        - subnet: 10.90.0.0/24
   proxy:
     external: true
     name: "${TRAEFIK_NETWORK}"
