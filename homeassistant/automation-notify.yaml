@@ -1,0 +1,61 @@
+# Variante « HA interroge l'app » — à coller dans automations.yaml
+# Ne fonctionne qu'une fois la route API de HortusFox identifiée
+# (voir homeassistant/README.md, étape de découverte).
+
+# ─── Capteur : nombre de tâches dues ──────────────────────────────────────────
+# configuration.yaml
+sensor:
+  - platform: rest
+    name: Plantes taches dues
+    unique_id: plantes_taches_dues
+    resource: https://plantes.ryxeuf.fr/api/ROUTE_A_CONFIRMER
+    headers:
+      Authorization: !secret hortusfox_token
+    value_template: "{{ value_json | length }}"
+    json_attributes:
+      - tasks
+    scan_interval: 1800
+
+# ─── Automatisation : notification actionnable ────────────────────────────────
+automation:
+  - alias: Plantes — rappel des tâches dues
+    id: plantes_rappel_taches
+    triggers:
+      - trigger: time
+        at: ["08:00:00", "18:30:00"]
+    conditions:
+      - condition: numeric_state
+        entity_id: sensor.plantes_taches_dues
+        above: 0
+    actions:
+      - action: notify.mobile_app_remy
+        data:
+          title: >-
+            {{ states('sensor.plantes_taches_dues') }} tâche(s) au jardin d'intérieur
+          message: >-
+            {{ state_attr('sensor.plantes_taches_dues', 'tasks')
+               | map(attribute='title') | list | join(' • ') }}
+          data:
+            tag: hortusfox-tasks
+            url: https://plantes.ryxeuf.fr
+            notification_icon: mdi:sprout
+            actions:
+              - action: URI
+                title: Ouvrir
+                uri: https://plantes.ryxeuf.fr
+              - action: PLANTES_SNOOZE
+                title: Plus tard
+
+  # Réponse au bouton « Plus tard » : on se rappelle dans 4 h
+  - alias: Plantes — report du rappel
+    id: plantes_report_rappel
+    triggers:
+      - trigger: event
+        event_type: mobile_app_notification_action
+        event_data:
+          action: PLANTES_SNOOZE
+    actions:
+      - delay: "04:00:00"
+      - action: automation.trigger
+        target:
+          entity_id: automation.plantes_rappel_taches

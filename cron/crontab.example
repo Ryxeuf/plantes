@@ -1,0 +1,31 @@
+# Planification HortusFox — à installer avec: crontab -e (utilisateur qui gère la stack)
+# Les endpoints sont conçus pour être appelés plusieurs fois par jour.
+
+# Tâches : 4 fois par jour (7h, 12h, 18h, 21h)
+0 7,12,18,21 * * *  cd /opt/plantes && ./cron/hortusfox-cron.sh >> /var/log/plantes-cron.log 2>&1
+
+# Sauvegarde interne de l'app, une fois par nuit
+30 3 * * *          cd /opt/plantes && WITH_BACKUP=1 ./cron/hortusfox-cron.sh >> /var/log/plantes-cron.log 2>&1
+
+# Sauvegarde externe (dump + volumes), une fois par nuit
+0 4 * * *           cd /opt/plantes && ./scripts/backup.sh >> /var/log/plantes-backup.log 2>&1
+
+# ─── Variante systemd (préférable si la machine utilise déjà des timers) ──────
+# /etc/systemd/system/plantes-cron.service
+#   [Unit]
+#   Description=HortusFox scheduled tasks
+#   [Service]
+#   Type=oneshot
+#   WorkingDirectory=/opt/plantes
+#   ExecStart=/opt/plantes/cron/hortusfox-cron.sh
+#
+# /etc/systemd/system/plantes-cron.timer
+#   [Unit]
+#   Description=Run HortusFox scheduled tasks 4x/day
+#   [Timer]
+#   OnCalendar=07,12,18,21:00
+#   Persistent=true
+#   [Install]
+#   WantedBy=timers.target
+#
+# systemctl enable --now plantes-cron.timer

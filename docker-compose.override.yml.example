@@ -1,0 +1,14 @@
+# Pour tester en local sans Traefik : copier en docker-compose.override.yml
+# L'app sera sur http://localhost:8080 — à supprimer avant la mise en production.
+services:
+  app:
+    ports:
+      - "127.0.0.1:8080:80"
+    labels:
+      traefik.enable: "false"
+    networks:
+      - internal
+
+networks:
+  proxy:
+    external: false
